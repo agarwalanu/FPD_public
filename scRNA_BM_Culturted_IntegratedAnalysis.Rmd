@@ -1,0 +1,198 @@
+---
+title: "scRNA-seq Analysis"
+author: "Alex Chitsazan"
+date: "4/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=T, warning = F, message = F)
+```
+
+
+## Demensional Reduction and Initial Clustering
+
+``` {r RegularMerge, fig.width=10, fig.height=5}
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+library(Seurat)
+library(tidyverse)
+## Bome Marrow Raw w/o CD34 enrichment 
+BM_Raw.data <- Read10X(data.dir = "Data/CEL181127AA_TB-BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Raw <- CreateSeuratObject(counts = BM_Raw.data, project = "BoneMarrow_Raw", min.cells = 3, min.features = 200)
+
+## Bone marrow w/ CD34/MDS enrichment
+BM_Enriched.data <- Read10X(data.dir = "Data/SCL181127AA_AO_BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Enriched <- CreateSeuratObject(counts = BM_Enriched.data, project = "BoneMarrow", min.cells = 3, min.features = 200)
+
+## Merged
+BM_combinedMerge <- merge(x = BM_Raw, y = BM_Enriched, add.cell.ids = c("Raw", "Enriched"), project = "BM_ALL")
+
+## Calculate Percent Mitochondria
+BM_combinedMerge[["percent.mt"]] <- PercentageFeatureSet(object = BM_combinedMerge, pattern = "^MT-")
+plot1 <- FeatureScatter(object = BM_combinedMerge, feature1 = "nCount_RNA", feature2 = "percent.mt") + geom_hline(yintercept=10)
+plot2 <- FeatureScatter(object = BM_combinedMerge, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + geom_hline(yintercept = c(600, 5400))
+CombinePlots(plots = list(plot1, plot2))
+## Subset out without the outliers
+BM_combinedMerge <- subset(x = BM_combinedMerge, subset = nFeature_RNA > 600 & nFeature_RNA < 5400 & percent.mt < 10)
+
+## Normalize the data to library size
+BM_combinedMerge <- NormalizeData(object = BM_combinedMerge, normalization.method = "LogNormalize", scale.factor = 10000)
+BM_combinedMerge <- FindVariableFeatures(object = BM_combinedMerge, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(x = BM_combinedMerge)
+BM_combinedMerge <- ScaleData(object = BM_combinedMerge, features = all.genes)
+
+
+## Perform PCA
+BM_combinedMerge <- RunPCA(object = BM_combinedMerge, features = VariableFeatures(object = BM_combinedMerge))
+ElbowPlot(BM_combinedMerge, ndims = 50) + geom_vline(xintercept=26, color = "red")
+
+
+## Perform Clustering
+BM_combinedMerge <- FindNeighbors(object = BM_combinedMerge, dims = 1:26)
+BM_combinedMerge <- FindClusters(object = BM_combinedMerge, resolution = 0.5)
+
+## UMAP
+BM_combinedMerge <- RunUMAP(object = BM_combinedMerge, dims = 1:26)
+DimPlot(object = BM_combinedMerge, reduction = "umap", group.by = "orig.ident", pt.size = 0.1, legend='top')
+DimPlot(object = BM_combinedMerge, reduction = "umap", group.by = "orig.ident", pt.size = 0.1, legend='top', cols = rev(gg_color_hue(2)), order = unique(BM_combinedMerge$orig.ident), label = T)
+FeaturePlot(BM_combinedMerge, features = c("HBD", "CD8B", "PTPRC"))
+grep("PTPRC", rownames(BM_combinedMerge), value = T)
+BM_combinedMerge@meta.data %>% group_by(RNA_snn_res.0.5, orig.ident) %>% tally(name = "TotalCells")
+```
+
+
+## Demensional Reduction and Initial Clustering
+
+``` {r MergedNormalized, fig.width=10, fig.height=5}
+
+## Bome Marrow Raw w/o CD34 enrichment 
+BM_Raw.data <- Read10X(data.dir = "Data/CEL181127AA_TB-BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Raw <- CreateSeuratObject(counts = BM_Raw.data, project = "BoneMarrow_Raw", min.cells = 3, min.features = 200)
+BM_Raw[["percent.mt"]] <- PercentageFeatureSet(object = BM_Raw, pattern = "^MT-")
+plot1 <- FeatureScatter(object = BM_Raw, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = BM_Raw, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(600, 5400), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+BM_Raw <- subset(x = BM_Raw, subset = nFeature_RNA > 600 & nFeature_RNA < 5400 & percent.mt < 10)
+BM_Raw <- NormalizeData(object = BM_Raw)
+
+## Bone marrow w/ CD34/MDS enrichment
+BM_Enriched.data <- Read10X(data.dir = "Data/SCL181127AA_AO_BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Enriched <- CreateSeuratObject(counts = BM_Enriched.data, project = "BoneMarrow", min.cells = 3, min.features = 200)
+BM_Enriched[["percent.mt"]] <- PercentageFeatureSet(object = BM_Enriched, pattern = "^MT-")
+plot1 <- FeatureScatter(object = BM_Enriched, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=9, linetype="dashed")
+plot2 <- FeatureScatter(object = BM_Enriched, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(400, 5200), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+BM_Enriched <- subset(x = BM_Enriched, subset = nFeature_RNA > 400 & nFeature_RNA < 5200 & percent.mt < 9)
+BM_Enriched <- NormalizeData(object = BM_Enriched)
+
+## Merged
+BM_combinedNormalized <- merge(x = BM_Raw, y = BM_Enriched, add.cell.ids = c("Raw", "Enriched"), project = "BM_ALL", merge.data = T)
+BM_combinedNormalized <- FindVariableFeatures(object = BM_combinedNormalized, selection.method = "vst", nfeatures = 2000)
+all.genes <- rownames(x = BM_combinedNormalized)
+BM_combinedNormalized <- ScaleData(object = BM_combinedNormalized, features = all.genes)
+
+
+## Perform PCA
+BM_combinedNormalized <- RunPCA(object = BM_combinedNormalized, features = VariableFeatures(object = BM_combinedNormalized))
+ElbowPlot(BM_combinedNormalized, ndims = 50) + geom_vline(xintercept=26, color = "red")
+
+
+## Perform Clustering
+BM_combinedNormalized <- FindNeighbors(object = BM_combinedNormalized, dims = 1:26)
+BM_combinedNormalized <- FindClusters(object = BM_combinedNormalized, resolution = 0.5)
+
+## UMAP
+BM_combinedNormalized <- RunUMAP(object = BM_combinedNormalized, dims = 1:26)
+DimPlot(object = BM_combinedNormalized, reduction = "umap", group.by = "orig.ident", pt.size = 0.1)
+DimPlot(object = BM_combinedNormalized, reduction = "umap", group.by = "orig.ident", pt.size = 0.1, legend='top', cols = gg_color_hue(2), order = unique(BM_combinedNormalized$orig.ident))
+
+```
+
+
+## Read in the data and QC Filtering
+
+```{r BM_Anchors, fig.width=10, fig.height=5}
+library(tidyverse)
+library(Seurat)
+
+## Bome Marrow Raw w/o CD34 enrichment 
+BM_Raw.data <- Read10X(data.dir = "Data/CEL181127AA_TB-BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Raw <- CreateSeuratObject(counts = BM_Raw.data, project = "BoneMarrow_Raw", min.cells = 3, min.features = 200)
+BM_Raw[["percent.mt"]] <- PercentageFeatureSet(object = BM_Raw, pattern = "^MT-")
+plot1 <- FeatureScatter(object = BM_Raw, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = BM_Raw, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(600, 5400), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+BM_Raw <- subset(x = BM_Raw, subset = nFeature_RNA > 600 & nFeature_RNA < 5400 & percent.mt < 10)
+BM_Raw <- NormalizeData(object = BM_Raw)
+BM_Raw <- FindVariableFeatures(object = BM_Raw, selection.method = "vst", nfeatures = 2000)
+
+## Bone marrow w/ CD34/MDS enrichment
+BM_Enriched.data <- Read10X(data.dir = "Data/SCL181127AA_AO_BM_merge/outs/filtered_feature_bc_matrix/")
+BM_Enriched <- CreateSeuratObject(counts = BM_Enriched.data, project = "BoneMarrow", min.cells = 3, min.features = 200)
+BM_Enriched[["percent.mt"]] <- PercentageFeatureSet(object = BM_Enriched, pattern = "^MT-")
+plot1 <- FeatureScatter(object = BM_Enriched, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=9, linetype="dashed")
+plot2 <- FeatureScatter(object = BM_Enriched, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(400, 5200), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+BM_Enriched <- subset(x = BM_Enriched, subset = nFeature_RNA > 400 & nFeature_RNA < 5200 & percent.mt < 9)
+BM_Enriched <- NormalizeData(object = BM_Enriched)
+BM_Enriched <- FindVariableFeatures(object = BM_Enriched, selection.method = "vst", nfeatures = 2000)
+
+BM.anchors <- FindIntegrationAnchors(object.list = list(BM_Raw, BM_Enriched), dims = 1:26)
+BM_combined <- IntegrateData(anchorset = BM.anchors, dims = 1:26)
+BM_combined <- ScaleData(object = BM_combined)
+
+
+## Perform PCA
+BM_combined <- RunPCA(object = BM_combined, npcs = 30)
+ElbowPlot(BM_combined, ndims = 30) + geom_vline(xintercept=26, color = "red")
+
+
+## Perform Clustering
+BM_combined <- FindNeighbors(object = BM_combined, dims = 1:26)
+BM_combined <- FindClusters(object = BM_combined, resolution = 0.5)
+
+## UMAP
+BM_combined <- RunUMAP(object = BM_combined, dims = 1:26)
+DimPlot(object = BM_combined, reduction = "umap", group.by = "orig.ident", pt.size = 0.01)
+# DimPlot(object = BM_combined, reduction = "umap", split.by = "orig.ident", pt.size = 0.1)
+DimPlot(object = BM_combined, 
+        reduction = "umap", 
+        group.by = "orig.ident", 
+        pt.size = 0.1, 
+        legend='top', 
+        cols = gg_color_hue(2), 
+        order = unique(BM_combined$orig.ident))
+FeaturePlot(BM_combined, features =c("CD34", "CD14"), min.cutoff = "q9", split.by = "orig.ident")
+FeaturePlot(BM_combined, features = c("HBD", "CD44"), min.cutoff = "q9")
+BM_combined@meta.data %>% group_by(integrated_snn_res.0.5, orig.ident) %>% tally(name = "TotalCells")
+```
+
+```{r}
+DimPlot(object = BM_combinedMerge, reduction = "umap", label = T, pt.size = 0.1)
+FeaturePlot(BM_combinedMerge, features = c("HBD"), split.by = "orig.ident", min.cutoff = "q9")
+DimPlot(object = BM_combinedMerge, reduction = "umap", group.by = "orig.ident", pt.size = 0.1) 
+DimPlot(object = BM_combinedMerge, reduction = "umap", group.by = "orig.ident", pt.size = 0.01) 
+BM_combinedMerge@meta.data %>% group_by(orig.ident) %>% tally()
+DimPlot(object = BM_combinedMerge, reduction = "umap", group.by = "orig.ident", pt.size = 0.01, legend='top', cols = rev(gg_color_hue(2)), order = unique(BM_combinedMerge$orig.ident))
+BM_combined@meta.data %>% 
+  group_by(integrated_snn_res.0.5, orig.ident) %>% 
+  tally(name = "TotalCells") %>% 
+  mutate(TotalCluster=sum(TotalCells)) %>% 
+  ungroup() %>% 
+  group_by(orig.ident) %>% 
+  mutate(TotalCellsSample=sum(TotalCells))
+
+
+```
+

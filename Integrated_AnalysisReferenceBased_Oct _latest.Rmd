@@ -1,0 +1,1399 @@
+---
+title: "scRNA-seq Analysis"
+author: "Alex Chitsazan"
+date: "4/3/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache=T, warning = F, message = F)
+```
+
+
+
+## Read in the data and QC Filtering
+
+```{r BM_Anchors, fig.width=10, fig.height=5, eval=F}
+library(tidyverse)
+library(Seurat)
+setwd("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/SeptemberNewData//")
+
+# ########################################################
+# #####        Human Cell Atlaas (subsampled)        #####
+# ########################################################
+# ####### BM_1_1 Enriched 8 Samples
+# samples <- list.files("~/Box Sync/Alex_Data/Anupriya_cellR3/HCA/")
+# # samples <- grep("BM1", samples, value = T)
+# 
+# sampleNames <- gsub("(.*)_[0-9]$", "\\1", samples)
+# # sampleNames<- grep("BM1", sampleNames, value = T)
+# combineData <- function(ReplicateNames, SampleNames) {
+#   for (sampleName in unique(SampleNames)) {
+#     print(sampleName)
+#     Replicates<- grep(sampleName, ReplicateNames, value = T)
+#     print(Replicates)
+#     for (i in 1:length(Replicates)) {
+#       if (i == 1) {
+#         print(Replicates[i])
+#         combinedData <- Read10X(sprintf("~/Box Sync/Alex_Data/Anupriya_cellR3/HCA/%s/filtered_feature_bc_matrix/", Replicates[i]))
+#         keep <- sample(size = 375,x = colnames(combinedData))
+#         combinedData  <- combinedData[,keep]
+#       } else {
+#         print(Replicates[i])
+#         tmpData <- Read10X(sprintf("~/Box Sync/Alex_Data/Anupriya_cellR3/HCA/%s/filtered_feature_bc_matrix/", Replicates[i]))
+#         keep <- sample(size = 375,x = colnames(tmpData))
+#         tmpData  <- tmpData[,keep]
+#         combinedData<- cbind(tmpData, combinedData)
+#       }
+#     }
+#     assign(x = sprintf("%s.data", sampleName), value = combinedData, envir = .GlobalEnv)
+#   }
+# }
+# combineData(samples, sampleNames)
+# ###################################
+# ####         BM1           ####
+# ###################################
+# 
+# ####### BM1 unenriched rep 1
+# Healthy_BM1 <- CreateSeuratObject(counts = BM1.data, project = "Healthy_BM1", min.cells = 3, min.features = 200)
+# Healthy_BM1[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM1, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=18, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 5000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM1 <- subset(x = Healthy_BM1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 18)
+# Healthy_BM1 <- NormalizeData(object = Healthy_BM1)
+# Healthy_BM1 <- FindVariableFeatures(object = Healthy_BM1, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM2 unenriched rep 1
+# Healthy_BM2 <- CreateSeuratObject(counts = BM2.data, project = "Healthy_BM2", min.cells = 3, min.features = 200)
+# Healthy_BM2[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM2, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=10, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 3000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM2 <- subset(x = Healthy_BM2, subset = nFeature_RNA > 200 & nFeature_RNA < 3000 & percent.mt < 10)
+# Healthy_BM2 <- NormalizeData(object = Healthy_BM2)
+# Healthy_BM2 <- FindVariableFeatures(object = Healthy_BM2, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM3 unenriched rep 1
+# Healthy_BM3 <- CreateSeuratObject(counts = BM3.data, project = "Healthy_BM3", min.cells = 3, min.features = 200)
+# Healthy_BM3[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM3, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM3, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=10, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM3, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200,4000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM3 <- subset(x = Healthy_BM3, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 18)
+# Healthy_BM3 <- NormalizeData(object = Healthy_BM3)
+# Healthy_BM3 <- FindVariableFeatures(object = Healthy_BM3, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM4 unenriched rep 1
+# Healthy_BM4 <- CreateSeuratObject(counts = BM4.data, project = "Healthy_BM4", min.cells = 3, min.features = 200)
+# Healthy_BM4[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM4, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM4, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=15, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 5000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM4 <- subset(x = Healthy_BM4, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+# Healthy_BM4 <- NormalizeData(object = Healthy_BM4)
+# Healthy_BM4 <- FindVariableFeatures(object = Healthy_BM4, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM5 unenriched rep 1
+# Healthy_BM5 <- CreateSeuratObject(counts = BM5.data, project = "Healthy_BM5", min.cells = 3, min.features = 200)
+# Healthy_BM5[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM5, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM5, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=16, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM5, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 6000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM5 <- subset(x = Healthy_BM5, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 16)
+# Healthy_BM5 <- NormalizeData(object = Healthy_BM5)
+# Healthy_BM5 <- FindVariableFeatures(object = Healthy_BM5, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM6 unenriched rep 1
+# Healthy_BM6 <- CreateSeuratObject(counts = BM6.data, project = "Healthy_BM6", min.cells = 3, min.features = 200)
+# Healthy_BM6[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM6, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM6, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=15, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM6, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 5000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM6 <- subset(x = Healthy_BM6, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+# Healthy_BM6 <- NormalizeData(object = Healthy_BM6)
+# Healthy_BM6 <- FindVariableFeatures(object = Healthy_BM6, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM7 unenriched rep 1
+# Healthy_BM7 <- CreateSeuratObject(counts = BM7.data, project = "Healthy_BM7", min.cells = 3, min.features = 200)
+# Healthy_BM7[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM7, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM7, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=15, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM7, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 5000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM7 <- subset(x = Healthy_BM7, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+# Healthy_BM7 <- NormalizeData(object = Healthy_BM7)
+# Healthy_BM7 <- FindVariableFeatures(object = Healthy_BM7, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### BM8 unenriched rep 1
+# Healthy_BM8 <- CreateSeuratObject(counts = BM8.data, project = "Healthy_BM8", min.cells = 3, min.features = 200)
+# Healthy_BM8[["percent.mt"]] <- PercentageFeatureSet(object = Healthy_BM8, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = Healthy_BM8, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=15, linetype="dashed")
+# plot2 <- FeatureScatter(object = Healthy_BM8, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 5000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# Healthy_BM8 <- subset(x = Healthy_BM8, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+# Healthy_BM8 <- NormalizeData(object = Healthy_BM8)
+# Healthy_BM8 <- FindVariableFeatures(object = Healthy_BM8, selection.method = "vst", nfeatures = 2000)
+
+
+
+
+# ####### HD19001 unenriched rep 2
+# HD19001_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCL190221AA_Merged/SCL190221AA_BM_2/filtered_feature_bc_matrix/")
+# HD19001_2 <- CreateSeuratObject(counts = HD19001_2.data, project = "HD19001_2", min.cells = 3, min.features = 200)
+# HD19001_2[["percent.mt"]] <- PercentageFeatureSet(object = HD19001_2, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD19001_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=11, linetype="dashed")
+# plot2 <- FeatureScatter(object = HD19001_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 1100), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD19001_2 <- subset(x = HD19001_2, subset = nFeature_RNA > 200 & nFeature_RNA < 1100 & percent.mt < 11)
+# HD19001_2 <- NormalizeData(object = HD19001_2)
+# HD19001_2 <- FindVariableFeatures(object = HD19001_2, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### HD19001 enriched for cd34 rep 1
+# HD19001_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCL190221AA_Merged/SCL190221AA_BM_SCSPIKE_1/filtered_feature_bc_matrix/")
+# HD19001_Enriched_1 <- CreateSeuratObject(counts = HD19001_Enriched_1.data, project = "HD19001_Enriched_1", min.cells = 3, min.features = 200)
+# HD19001_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = HD19001_Enriched_1, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD19001_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=11, linetype="dashed")
+# plot2 <- FeatureScatter(object = HD19001_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+#   geom_hline(yintercept = c(200, 1600), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD19001_Enriched_1 <- subset(x = HD19001_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 1600 & percent.mt < 11)
+# HD19001_Enriched_1 <- NormalizeData(object = HD19001_Enriched_1)
+# HD19001_Enriched_1 <- FindVariableFeatures(object = HD19001_Enriched_1, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### HD19001 enriched for cd34 rep 2
+# HD19001_Enriched_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCL190221AA_Merged/SCL190221AA_BM_SCSPIKE_2/filtered_feature_bc_matrix/")
+# HD19001_Enriched_2 <- CreateSeuratObject(counts = HD19001_Enriched_2.data, project = "HD19001_Enriched_2", min.cells = 3, min.features = 200)
+# HD19001_Enriched_2[["percent.mt"]] <- PercentageFeatureSet(object = HD19001_Enriched_2, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD19001_Enriched_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=11, linetype="dashed")
+# plot2 <- FeatureScatter(object = HD19001_Enriched_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+#   geom_hline(yintercept = c(200, 1450), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD19001_Enriched_2 <- subset(x = HD19001_Enriched_2, subset = nFeature_RNA > 200 & nFeature_RNA < 1450 & percent.mt < 11)
+# HD19001_Enriched_2 <- NormalizeData(object = HD19001_Enriched_2)
+# HD19001_Enriched_2 <- FindVariableFeatures(object = HD19001_Enriched_2, selection.method = "vst", nfeatures = 2000)
+
+
+
+###################################
+####         HD19002           ####
+###################################
+library(Seurat)
+library(tidyverse)
+####### HD19002 unenriched rep 1
+HD19002_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190416AA/SCC190416AA_HD19002_BM/filtered_feature_bc_matrix/")
+HD19002_1 <- CreateSeuratObject(counts = HD19002_1.data, project = "HD19002_1", min.cells = 3, min.features = 200)
+HD19002_1[["percent.mt"]] <- PercentageFeatureSet(object = HD19002_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD19002_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = HD19002_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD19002_1 <- subset(x = HD19002_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 10)
+HD19002_1 <- NormalizeData(object = HD19002_1)
+HD19002_1 <- FindVariableFeatures(object = HD19002_1, selection.method = "vst", nfeatures = 2000)
+
+####### HD19002 unenriched rep 2
+HD19002_Enriched.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190416AA/SCC190416AA_HD19002_BM_CD34_MSC/filtered_feature_bc_matrix/")
+HD19002_Enriched <- CreateSeuratObject(counts = HD19002_Enriched.data, project = "HD19002_Enriched", min.cells = 3, min.features = 200)
+HD19002_Enriched[["percent.mt"]] <- PercentageFeatureSet(object = HD19002_Enriched, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD19002_Enriched, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = HD19002_Enriched, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 4700), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD19002_Enriched <- subset(x = HD19002_Enriched, subset = nFeature_RNA > 200 & nFeature_RNA < 4700 & percent.mt < 11)
+HD19002_Enriched <- NormalizeData(object = HD19002_Enriched)
+HD19002_Enriched <- FindVariableFeatures(object = HD19002_Enriched, selection.method = "vst", nfeatures = 2000)
+
+
+#####################################################
+####        CEL181127AA (FPD1 Unenriched)        ####
+#####################################################
+
+####### FPD1 unenriched rep 1
+FPD1_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL181127AA/CEL181127AA_TB-BM_rep_1/filtered_feature_bc_matrix/")
+FPD1_1 <- CreateSeuratObject(counts = FPD1_1.data, project = "FPD1_1", min.cells = 3, min.features = 200)
+FPD1_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=11, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_1 <- subset(x = FPD1_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 11)
+FPD1_1 <- NormalizeData(object = FPD1_1)
+FPD1_1 <- FindVariableFeatures(object = FPD1_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD1 unenriched rep 2
+FPD1_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL181127AA/CEL181127AA_TB-BM_rep_2/filtered_feature_bc_matrix/")
+FPD1_2 <- CreateSeuratObject(counts = FPD1_2.data, project = "FPD1_2", min.cells = 3, min.features = 200)
+FPD1_2[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=12, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_2 <- subset(x = FPD1_2, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 12)
+FPD1_2 <- NormalizeData(object = FPD1_2)
+FPD1_2 <- FindVariableFeatures(object = FPD1_2, selection.method = "vst", nfeatures = 2000)
+
+####### FPD1 unenriched rep 3
+FPD1_3.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL181127AA/CEL181127AA_TB-BM_rep_3/filtered_feature_bc_matrix/")
+FPD1_3 <- CreateSeuratObject(counts = FPD1_3.data, project = "FPD1_3", min.cells = 3, min.features = 200)
+FPD1_3[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_3, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_3, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=15, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_3, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_3 <- subset(x = FPD1_3, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+FPD1_3 <- NormalizeData(object = FPD1_3)
+FPD1_3 <- FindVariableFeatures(object = FPD1_3, selection.method = "vst", nfeatures = 2000)
+
+####### FPD1 unenriched rep 4
+FPD1_4.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL181127AA/CEL181127AA_TB-BM_rep_4/filtered_feature_bc_matrix/")
+FPD1_4 <- CreateSeuratObject(counts = FPD1_4.data, project = "FPD1_4", min.cells = 3, min.features = 200)
+FPD1_4[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_4, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_4, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=12, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_4 <- subset(x = FPD1_4, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 12)
+FPD1_4 <- NormalizeData(object = FPD1_4)
+FPD1_4 <- FindVariableFeatures(object = FPD1_4, selection.method = "vst", nfeatures = 2000)
+
+
+
+
+
+
+
+
+
+#####################################################
+#####        SCL190221AA (FPD1 Enriched)        #####
+#####################################################
+
+####### FPD1 Enriched rep 1
+FPD1_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCL181127AA/SCL181127AA_AO_BM_rep_1/filtered_feature_bc_matrix/")
+FPD1_Enriched_1 <- CreateSeuratObject(counts = FPD1_Enriched_1.data, project = "FPD1_Enriched_1", min.cells = 3, min.features = 200)
+FPD1_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=15, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_Enriched_1 <- subset(x = FPD1_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+FPD1_Enriched_1 <- NormalizeData(object = FPD1_Enriched_1)
+FPD1_Enriched_1 <- FindVariableFeatures(object = FPD1_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD1 Enriched rep 2
+FPD1_Enriched_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCL181127AA/SCL181127AA_AO_BM_rep_2/filtered_feature_bc_matrix/")
+FPD1_Enriched_2 <- CreateSeuratObject(counts = FPD1_Enriched_2.data, project = "FPD1_Enriched_2", min.cells = 3, min.features = 200)
+FPD1_Enriched_2[["percent.mt"]] <- PercentageFeatureSet(object = FPD1_Enriched_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD1_Enriched_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=15, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD1_Enriched_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD1_Enriched_2 <- subset(x = FPD1_Enriched_2, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+FPD1_Enriched_2 <- NormalizeData(object = FPD1_Enriched_2)
+FPD1_Enriched_2 <- FindVariableFeatures(object = FPD1_Enriched_2, selection.method = "vst", nfeatures = 2000)
+
+
+
+
+
+
+
+
+########################################################
+#####        SCC190314AA (FPD2, FPD3, FPD4)        #####
+########################################################
+
+####### FPD2 Enriched rep 1
+FPD2_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_2_1/filtered_feature_bc_matrix/")
+FPD2_Enriched_1 <- CreateSeuratObject(counts = FPD2_Enriched_1.data, project = "FPD2_Enriched_1", min.cells = 3, min.features = 200)
+FPD2_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD2_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD2_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD2_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4600), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD2_Enriched_1 <- subset(x = FPD2_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4600 & percent.mt < 10)
+FPD2_Enriched_1 <- NormalizeData(object = FPD2_Enriched_1)
+FPD2_Enriched_1 <- FindVariableFeatures(object = FPD2_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD2 Enriched rep 2
+FPD2_Enriched_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_2_2/filtered_feature_bc_matrix/")
+FPD2_Enriched_2 <- CreateSeuratObject(counts = FPD2_Enriched_2.data, project = "FPD2_Enriched_2", min.cells = 3, min.features = 200)
+FPD2_Enriched_2[["percent.mt"]] <- PercentageFeatureSet(object = FPD2_Enriched_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD2_Enriched_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=9, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD2_Enriched_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 4300), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD2_Enriched_2 <- subset(x = FPD2_Enriched_2, subset = nFeature_RNA > 200 & nFeature_RNA < 4300 & percent.mt < 9)
+FPD2_Enriched_2 <- NormalizeData(object = FPD2_Enriched_2)
+FPD2_Enriched_2 <- FindVariableFeatures(object = FPD2_Enriched_2, selection.method = "vst", nfeatures = 2000)
+
+####### FPD3 Enriched rep 1
+FPD3_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_3_1/filtered_feature_bc_matrix/")
+FPD3_Enriched_1 <- CreateSeuratObject(counts = FPD3_Enriched_1.data, project = "FPD3_Enriched_1", min.cells = 3, min.features = 200)
+FPD3_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD3_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD3_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD3_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4600), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD3_Enriched_1 <- subset(x = FPD3_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4600 & percent.mt < 10)
+FPD3_Enriched_1 <- NormalizeData(object = FPD3_Enriched_1)
+FPD3_Enriched_1 <- FindVariableFeatures(object = FPD3_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD3 Enriched rep 2
+FPD3_Enriched_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_3_2/filtered_feature_bc_matrix/")
+FPD3_Enriched_2 <- CreateSeuratObject(counts = FPD3_Enriched_2.data, project = "FPD3_Enriched_2", min.cells = 3, min.features = 200)
+FPD3_Enriched_2[["percent.mt"]] <- PercentageFeatureSet(object = FPD3_Enriched_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD3_Enriched_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=9, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD3_Enriched_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 4300), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD3_Enriched_2 <- subset(x = FPD3_Enriched_2, subset = nFeature_RNA > 200 & nFeature_RNA < 4300 & percent.mt < 9)
+FPD3_Enriched_2 <- NormalizeData(object = FPD3_Enriched_2)
+FPD3_Enriched_2 <- FindVariableFeatures(object = FPD3_Enriched_2, selection.method = "vst", nfeatures = 2000)
+
+####### FPD4 Enriched rep 1
+FPD4_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_4_1/filtered_feature_bc_matrix/")
+FPD4_Enriched_1 <- CreateSeuratObject(counts = FPD4_Enriched_1.data, project = "FPD4_Enriched_1", min.cells = 3, min.features = 200)
+FPD4_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD4_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD4_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD4_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4600), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD4_Enriched_1 <- subset(x = FPD4_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4600 & percent.mt < 10)
+FPD4_Enriched_1 <- NormalizeData(object = FPD4_Enriched_1)
+FPD4_Enriched_1 <- FindVariableFeatures(object = FPD4_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD4 Enriched rep 2
+FPD4_Enriched_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCC190314AA/SCC190314AA_FPD_4_2/filtered_feature_bc_matrix/")
+FPD4_Enriched_2 <- CreateSeuratObject(counts = FPD4_Enriched_2.data, project = "FPD4_Enriched_2", min.cells = 3, min.features = 200)
+FPD4_Enriched_2[["percent.mt"]] <- PercentageFeatureSet(object = FPD4_Enriched_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD4_Enriched_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=10, linetype="dashed")
+plot2 <- FeatureScatter(object = FPD4_Enriched_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") +
+  geom_hline(yintercept = c(200, 4600), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD4_Enriched_2 <- subset(x = FPD4_Enriched_2, subset = nFeature_RNA > 200 & nFeature_RNA < 4600 & percent.mt < 10)
+FPD4_Enriched_2 <- NormalizeData(object = FPD4_Enriched_2)
+FPD4_Enriched_2 <- FindVariableFeatures(object = FPD4_Enriched_2, selection.method = "vst", nfeatures = 2000)
+
+
+
+
+
+####### FPD6 enriched rep 1
+FPD6_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190731AA/CEL190731AA_FPD6_BM_MNC_CD34_MSC/filtered_feature_bc_matrix/")
+FPD6_Enriched_1 <- CreateSeuratObject(counts = FPD6_Enriched_1.data, project = "FPD6_Enriched_1", min.cells = 3, min.features = 200)
+FPD6_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD6_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD6_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(1,14), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD6_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6200), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD6_Enriched_1 <- subset(x = FPD6_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6200 & percent.mt < 14 & percent.mt >1)
+FPD6_Enriched_1 <- NormalizeData(object = FPD6_Enriched_1)
+FPD6_Enriched_1 <- FindVariableFeatures(object = FPD6_Enriched_1, selection.method = "vst", nfeatures = 2000)
+ 
+####### FPD7 unenriched rep 1
+FPD7_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_FPD7_MNC/filtered_feature_bc_matrix/")
+FPD7_1 <- CreateSeuratObject(counts = FPD7_1.data, project = "FPD7_1", min.cells = 3, min.features = 200)
+FPD7_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD7_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD7_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(20), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD7_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6200), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD7_1 <- subset(x = FPD7_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6200 & percent.mt < 20)
+FPD7_1 <- NormalizeData(object = FPD7_1)
+FPD7_1 <- FindVariableFeatures(object = FPD7_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 enriched rep 1
+FPD7_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_FPD7_MNC_plus_CD34_plus_MSC/filtered_feature_bc_matrix/")
+FPD7_Enriched_1 <- CreateSeuratObject(counts = FPD7_Enriched_1.data, project = "FPD7_Enriched_1", min.cells = 3, min.features = 200)
+FPD7_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD7_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD7_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(20), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD7_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6200), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD7_Enriched_1 <- subset(x = FPD7_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6200 & percent.mt < 20)
+FPD7_Enriched_1 <- NormalizeData(object = FPD7_Enriched_1)
+FPD7_Enriched_1 <- FindVariableFeatures(object = FPD7_Enriched_1, selection.method = "vst", nfeatures = 2000)
+ 
+####### FPD7 unenriched rep 1
+FPD7_CD11BCD14_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_FPD7_Cd11b_plus_CD14_plus/filtered_feature_bc_matrix/")
+FPD7_CD11BCD14_1 <- CreateSeuratObject(counts = FPD7_CD11BCD14_1.data, project = "FPD7_CD11BCD14_1", min.cells = 3, min.features = 200)
+FPD7_CD11BCD14_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD7_CD11BCD14_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD7_CD11BCD14_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(20), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD7_CD11BCD14_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 3600), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD7_CD11BCD14_1 <- subset(x = FPD7_CD11BCD14_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6200 & percent.mt < 20)
+FPD7_CD11BCD14_1 <- NormalizeData(object = FPD7_CD11BCD14_1)
+FPD7_CD11BCD14_1 <- FindVariableFeatures(object = FPD7_CD11BCD14_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 enriched rep 1
+FPD7_CD11BCD14minus_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_FPD7_Cd11b_plus_CD14_minus/filtered_feature_bc_matrix/")
+FPD7_CD11BCD14minus_1 <- CreateSeuratObject(counts = FPD7_CD11BCD14minus_1.data, project = "FPD7_CD11BCD14minus_1", min.cells = 3, min.features = 200)
+FPD7_CD11BCD14minus_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD7_CD11BCD14minus_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD7_CD11BCD14minus_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(20), linetype="dashed") + NoLegend()
+plot2 <- FeatureScatter(object = FPD7_CD11BCD14minus_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4000), linetype="dashed") + NoLegend()
+CombinePlots(plots = list(plot1, plot2))
+FPD7_CD11BCD14minus_1 <- subset(x = FPD7_CD11BCD14minus_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 20)
+FPD7_CD11BCD14minus_1 <- NormalizeData(object = FPD7_CD11BCD14minus_1)
+FPD7_CD11BCD14minus_1 <- FindVariableFeatures(object = FPD7_CD11BCD14minus_1, selection.method = "vst", nfeatures = 2000)
+
+# ####### FPD7 unenriched rep 1
+# HD3_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_Batch3_v2_HD3_1/filtered_feature_bc_matrix/")
+# HD3_1 <- CreateSeuratObject(counts = HD3_1.data, project = "HD3_1", min.cells = 3, min.features = 200)
+# HD3_1[["percent.mt"]] <- PercentageFeatureSet(object = HD3_1, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD3_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=c(9), linetype="dashed")
+# plot2 <- FeatureScatter(object = HD3_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+#   geom_hline(yintercept = c(200, 3000), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD3_1 <- subset(x = HD3_1, subset = nFeature_RNA > 200 & nFeature_RNA < 3000 & percent.mt < 9)
+# HD3_1 <- NormalizeData(object = HD3_1)
+# HD3_1 <- FindVariableFeatures(object = HD3_1, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### FPD7 unenriched rep 1
+# HD3_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_Batch3_v2_HD3_2/filtered_feature_bc_matrix/")
+# HD3_2 <- CreateSeuratObject(counts = HD3_2.data, project = "HD3_2", min.cells = 3, min.features = 200)
+# HD3_2[["percent.mt"]] <- PercentageFeatureSet(object = HD3_2, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD3_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=c(1,9), linetype="dashed")
+# plot2 <- FeatureScatter(object = HD3_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+#   geom_hline(yintercept = c(200, 1700), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD3_2 <- subset(x = HD3_2, subset = nFeature_RNA > 200 & nFeature_RNA < 1700 & percent.mt < 9 & percent.mt > 1)
+# HD3_2 <- NormalizeData(object = HD3_2)
+# HD3_2 <- FindVariableFeatures(object = HD3_2, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### FPD7 unenriched rep 1
+# HD3_3.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_Batch3_v2_HD3_3/filtered_feature_bc_matrix/")
+# HD3_3 <- CreateSeuratObject(counts = HD3_3.data, project = "HD3_3", min.cells = 3, min.features = 200)
+# HD3_3[["percent.mt"]] <- PercentageFeatureSet(object = HD3_3, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD3_3, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=c(1,9), linetype="dashed")
+# plot2 <- FeatureScatter(object = HD3_3, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+#   geom_hline(yintercept = c(200, 800), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD3_3 <- subset(x = HD3_3, subset = nFeature_RNA > 200 & nFeature_RNA < 1700 & percent.mt < 9 & percent.mt > 1)
+# HD3_3 <- NormalizeData(object = HD3_3)
+# HD3_3 <- FindVariableFeatures(object = HD3_3, selection.method = "vst", nfeatures = 2000)
+# 
+# ####### FPD7 unenriched rep 1
+# HD3_4.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_Batch3_v2_HD3_4/filtered_feature_bc_matrix/")
+# HD3_4 <- CreateSeuratObject(counts = HD3_4.data, project = "HD3_4", min.cells = 3, min.features = 200)
+# HD3_4[["percent.mt"]] <- PercentageFeatureSet(object = HD3_4, pattern = "^MT-")
+# plot1 <- FeatureScatter(object = HD3_4, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+#   geom_hline(yintercept=c(1,7), linetype="dashed")
+# plot2 <- FeatureScatter(object = HD3_4, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+#   geom_hline(yintercept = c(200, 1250), linetype="dashed")
+# CombinePlots(plots = list(plot1, plot2))
+# HD3_4 <- subset(x = HD3_4, subset = nFeature_RNA > 200 & nFeature_RNA < 1200 & percent.mt < 9 & percent.mt > 1)
+# HD3_4 <- NormalizeData(object = HD3_4)
+# HD3_4 <- FindVariableFeatures(object = HD3_4, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD8_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190905AA/CEL190905AA_FPD8_MNC/filtered_feature_bc_matrix/")
+FPD8_1 <- CreateSeuratObject(counts = FPD8_1.data, project = "FPD8_1", min.cells = 3, min.features = 200)
+FPD8_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD8_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD8_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(1,15), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD8_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD8_1 <- subset(x = FPD8_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 15 & percent.mt > 1)
+FPD8_1 <- NormalizeData(object = FPD8_1)
+FPD8_1 <- FindVariableFeatures(object = FPD8_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD8_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190905AA/CEL190905AA_FPD8_MNC_plus_Cd34_plus_MSC/filtered_feature_bc_matrix/")
+FPD8_Enriched_1 <- CreateSeuratObject(counts = FPD8_Enriched_1.data, project = "FPD8_Enriched_1", min.cells = 3, min.features = 200)
+FPD8_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD8_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD8_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(15), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD8_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD8_Enriched_1 <- subset(x = FPD8_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 15)
+FPD8_Enriched_1 <- NormalizeData(object = FPD8_Enriched_1)
+FPD8_Enriched_1 <- FindVariableFeatures(object = FPD8_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+HD4_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190905AA/CEL190905AA_HD19-004_MNC/filtered_feature_bc_matrix/")
+HD4_1 <- CreateSeuratObject(counts = HD4_1.data, project = "HD4_1", min.cells = 3, min.features = 200)
+HD4_1[["percent.mt"]] <- PercentageFeatureSet(object = HD4_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD4_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(12), linetype="dashed")
+plot2 <- FeatureScatter(object = HD4_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD4_1 <- subset(x = HD4_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 12)
+HD4_1 <- NormalizeData(object = HD4_1)
+HD4_1 <- FindVariableFeatures(object = HD4_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+HD4_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190905AA/CEL190905AA_HD19-004_MNC_plus_Cd34_plus_MSC/filtered_feature_bc_matrix/")
+HD4_Enriched_1 <- CreateSeuratObject(counts = HD4_Enriched_1.data, project = "HD4_Enriched_1", min.cells = 3, min.features = 200)
+HD4_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = HD4_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD4_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(15), linetype="dashed")
+plot2 <- FeatureScatter(object = HD4_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5400), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD4_Enriched_1 <- subset(x = HD4_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5400 & percent.mt < 15)
+HD4_Enriched_1 <- NormalizeData(object = HD4_Enriched_1)
+HD4_Enriched_1 <- FindVariableFeatures(object = HD4_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD9_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190911AA/CEL190911AA_FPD9/filtered_feature_bc_matrix/")
+FPD9_1 <- CreateSeuratObject(counts = FPD9_1.data, project = "FPD9_1", min.cells = 3, min.features = 200)
+FPD9_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD9_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD9_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(12), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD9_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4700), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD9_1 <- subset(x = FPD9_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4700 & percent.mt < 12)
+FPD9_1 <- NormalizeData(object = FPD9_1)
+FPD9_1 <- FindVariableFeatures(object = FPD9_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD9_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190911AA/CEL190911AA_FPD9_CD34plus_MSC/filtered_feature_bc_matrix/")
+FPD9_Enriched_1 <- CreateSeuratObject(counts = FPD9_Enriched_1.data, project = "FPD9_Enriched_1", min.cells = 3, min.features = 200)
+FPD9_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD9_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD9_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(15), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD9_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4500), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD9_Enriched_1 <- subset(x = FPD9_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 4500 & percent.mt < 15)
+FPD9_Enriched_1 <- NormalizeData(object = FPD9_Enriched_1)
+FPD9_Enriched_1 <- FindVariableFeatures(object = FPD9_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD10_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190911AA/CEL190911AA_FPD10/filtered_feature_bc_matrix/")
+FPD10_1 <- CreateSeuratObject(counts = FPD10_1.data, project = "FPD10_1", min.cells = 3, min.features = 200)
+FPD10_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD10_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD10_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(12), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD10_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 6000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD10_1 <- subset(x = FPD10_1, subset = nFeature_RNA > 200 & nFeature_RNA < 6000 & percent.mt < 12)
+FPD10_1 <- NormalizeData(object = FPD10_1)
+FPD10_1 <- FindVariableFeatures(object = FPD10_1, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD10_Enriched_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190911AA/CEL190911AA_FPD10_CD34plus_MSC/filtered_feature_bc_matrix/")
+FPD10_Enriched_1 <- CreateSeuratObject(counts = FPD10_Enriched_1.data, project = "FPD10_Enriched_1", min.cells = 3, min.features = 200)
+FPD10_Enriched_1[["percent.mt"]] <- PercentageFeatureSet(object = FPD10_Enriched_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD10_Enriched_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(1,15), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD10_Enriched_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5800), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD10_Enriched_1 <- subset(x = FPD10_Enriched_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5800 & percent.mt < 15 & percent.mt > 1)
+FPD10_Enriched_1 <- NormalizeData(object = FPD10_Enriched_1)
+FPD10_Enriched_1 <- FindVariableFeatures(object = FPD10_Enriched_1, selection.method = "vst", nfeatures = 2000)
+
+
+###### FPD7 unenriched rep 1
+HD_4_2.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190823AA/CEL190823AA_Batch_3_HD_4_v2/filtered_feature_bc_matrix/")
+HD_4_2 <- CreateSeuratObject(counts = HD_4_2.data, project = "HD_4_2", min.cells = 3, min.features = 200)
+HD_4_2[["percent.mt"]] <- PercentageFeatureSet(object = HD_4_2, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD_4_2, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(10), linetype="dashed")
+plot2 <- FeatureScatter(object = HD_4_2, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 3300), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD_4_2 <- subset(x = HD_4_2, subset = nFeature_RNA > 200 & nFeature_RNA < 3300 & percent.mt < 10)
+HD_4_2 <- NormalizeData(object = HD_4_2)
+HD_4_2 <- FindVariableFeatures(object = HD_4_2, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+    HD5.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL190916AA/CEL190916AA_HD19005/filtered_feature_bc_matrix/")
+HD5 <- CreateSeuratObject(counts = HD5.data, project = "HD5", min.cells = 3, min.features = 200)
+HD5[["percent.mt"]] <- PercentageFeatureSet(object = HD5, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD5, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(20), linetype="dashed")
+plot2 <- FeatureScatter(object = HD5, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 3800), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD5 <- subset(x = HD5, subset = nFeature_RNA > 200 & nFeature_RNA < 3800 & percent.mt < 20)
+HD5 <- NormalizeData(object = HD5)
+HD5 <- FindVariableFeatures(object = HD5, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+FPD12.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/CEL191022AA/CEL191022AA_FPD12_MNC/filtered_feature_bc_matrix/")
+dim(FPD12.data)
+FPD12 <- CreateSeuratObject(counts = FPD12.data, project = "FPD12", min.cells = 3, min.features = 200)
+FPD12[["percent.mt"]] <- PercentageFeatureSet(object = FPD12, pattern = "^MT-")
+plot1 <- FeatureScatter(object = FPD12, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(16), linetype="dashed")
+plot2 <- FeatureScatter(object = FPD12, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 4000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+FPD12 <- subset(x = FPD12, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 16)
+FPD12 <- NormalizeData(object = FPD12)
+FPD12 <- FindVariableFeatures(object = FPD12, selection.method = "vst", nfeatures = 2000)
+
+####### FPD7 unenriched rep 1
+HD6_1.data <- Read10X(data.dir = "~/Box Sync/Alex_Data/Anupriya_cellR3/SCA191009AA/SCA191009AA_HD19006_MNC/filtered_feature_bc_matrix/")
+HD6_1 <- CreateSeuratObject(counts = HD6_1.data, project = "HD6_1", min.cells = 3, min.features = 200)
+HD6_1[["percent.mt"]] <- PercentageFeatureSet(object = HD6_1, pattern = "^MT-")
+plot1 <- FeatureScatter(object = HD6_1, feature1 = "nCount_RNA", feature2 = "percent.mt") +
+  geom_hline(yintercept=c(1,10), linetype="dashed")
+plot2 <- FeatureScatter(object = HD6_1, feature1 = "nCount_RNA", feature2 = "nFeature_RNA") + 
+  geom_hline(yintercept = c(200, 5000), linetype="dashed")
+CombinePlots(plots = list(plot1, plot2))
+HD6_1 <- subset(x = HD6_1, subset = nFeature_RNA > 200 & nFeature_RNA < 5000 & percent.mt < 10 & percent.mt > 1)
+HD6_1 <- NormalizeData(object = HD6_1)
+HD6_1 <- FindVariableFeatures(object = HD6_1, selection.method = "vst", nfeatures = 2000)
+
+
+
+SeuratObject.List <- list(HD19002_1, HD19002_Enriched,
+                          FPD1_1, FPD1_2, FPD1_3, FPD1_4,
+                          FPD1_Enriched_1, FPD1_Enriched_2,
+                          FPD2_Enriched_1, FPD2_Enriched_2,
+                          FPD3_Enriched_1, FPD3_Enriched_2,
+                          FPD4_Enriched_1, FPD4_Enriched_2,
+                          FPD6_Enriched_1,  
+                          FPD7_1, FPD7_Enriched_1,  FPD7_CD11BCD14_1, FPD7_CD11BCD14minus_1, 
+                          FPD8_1, FPD8_Enriched_1, 
+                          FPD9_1, FPD9_Enriched_1, 
+                          FPD10_1, FPD10_Enriched_1, 
+                          HD4_1, HD4_Enriched_1,
+                          HD6_1, HD5, HD_4_2, FPD12)
+
+referenceDatasets <- list(Healthy_BM1, Healthy_BM2,
+                          HD4_1, HD4_Enriched_1,
+                          FPD8_1, FPD8_Enriched_1)
+
+featuresToUse<- SelectIntegrationFeatures(SeuratObject.List)
+
+BM.anchors <- FindIntegrationAnchors(object.list = SeuratObject.List, 
+                                     anchor.features = featuresToUse,
+                                     reference = c(1,2,20,21), 
+                                     dims = 1:50)
+BM.anchors <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData_TranferedAnchors/BM_anchors_TransforSep14.RDS")
+# BM.anchors <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData_TranferedAnchors/BM_anchors_Transfor.RDS")
+system.time(BM_combined <- IntegrateData(anchorset = BM.anchors, dims = 1:50))
+all.genes <- rownames(BM_combined)
+BM_combined <- ScaleData(object = BM_combined)
+
+## Perform PCA
+BM_combined <- RunPCA(object = BM_combined, npcs = 75)
+ElbowPlot(BM_combined, ndims = 75) + geom_vline(xintercept=50, color = "red")
+
+
+## Perform Clustering
+BM_combined <- FindNeighbors(object = BM_combined, dims = 1:50, nn.eps = 0.5)
+BM_combined <- FindClusters(object = BM_combined, resolution = 0.7, n.start = 10)
+
+# BM_combined_Normal
+# BM_combined
+## UMAP
+library(Seurat)
+BM_combined <- RunUMAP(object = BM_combined, dims = 1:50, n.components = 2, n.neighbors = 40, min.dist = 0.3, verbose = T)
+
+rm(BM.anchors)
+
+saveRDS(BM_combined, "~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined_Try2Sept.RDS")
+BM_combined <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined_Try2Sept.RDS")
+# BM_combined <-readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined.RDS")
+BM_combined_minDist0.3.Nneighbors40_3D <- RunUMAP(object = BM_combined_minDist0.3.Nneighbors60, dims = 1:50, n.components = 3, n.neighbors = 40, min.dist = 0.4, verbose = T)
+# BM_combined <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData_TranferedAnchors/BM_combined.RDS")
+# BM_combined_Normal <- readRDS("~/Downloads/BM_Combined_Relabeled.RDS")
+BM_combined_Normal <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined_May12.RDS")
+set.seed(2)
+BM_combined_Normal <- subset(BM_combined_Normal, cells = sample(colnames(BM_combined_Normal), size = 25000, replace =F))
+DefaultAssay(BM_combined_Normal) <- "integrated"
+rm(BM.anchors.tranfer)
+# BM_ancchors_Transfor <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData_TranferedAnchors/BM_anchors_Transfor.RDS")
+# saveRDS(BM_combined, "~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData_TranferedAnchors/BM_combined_transfored.RDS")
+BM_combined_Normal <- FindVariableFeatures(BM_combined_Normal)
+AnchorFeatures <- intersect(VariableFeatures(BM_combined_Normal), VariableFeatures(BM_combined))
+
+BM_combined_Normal <- RenameCells(BM_combined_Normal, add.cell.id = "First")
+BM.anchors.tranfer <- FindTransferAnchors(reference = BM_combined_Normal, 
+                                  query = BM_combined, 
+                                  features = AnchorFeatures,
+                                  dims = 1:30)
+predictions <- TransferData(anchorset = BM.anchors.tranfer, 
+                            refdata = BM_combined_Normal$CelltypeProgenitor_2, 
+                            dims = 1:30)
+BM_combined <- AddMetaData(BM_combined, metadata = predictions$predicted.id, "predicted")
+DimPlot(BM_combined, reduction = "umap", group.by = "predicted", label =T)
+## Get rid of cd11b 
+BM_combined <- subset(BM_combined, cells = names(grep("CD11B", BM_combined$Enrichment, value = T)), invert=T)
+saveRDS(BM_combined, "~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined_sept15.RDS")
+BM_combined <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/BM_combined_march12.RDS")
+DimPlot(BM_combined, group.by = "Celltype")
+## Add predicted IDs as Ident
+library(Seurat)
+Idents(BM_combined) <- "predicted"
+# Idents(BM_combined_minDist0.3.Nneighbors40_3D) <- "predicted"
+# CellTypes <- factor(BM_combined$predicted, levels = c("HSC", "Progenitor", "Unknown 29", "GMP", 
+#                              "Pro-Mono", "Mono", "pDC", "cDC",
+#                              "Early Eryth", "Late Eryth",
+#                              "Pro-B", "B", "Plasma", "CTL",
+#                              "NK", "T",  "Unknown 30", "Stroma"))
+# BM_combined$Celltype <- CellTypes
+BM_combined$Celltype <- Idents(BM_combined)
+Idents(BM_combined)
+## Add METADATA columns
+SampleNames <- names(table(BM_combined$orig.ident))
+SampleNames
+#Condition
+Condition <- c(rep("FPD", 24), rep("Healthy", 7))
+names(Condition) <- SampleNames
+BM_combined$Condition <- plyr::revalue(BM_combined$orig.ident, Condition)
+FeaturePlot(BM_combined, "CD74", split.by = "Condition")
+VlnPlot(BM_combined, "MIF", group.by =  "Celltype", split.by = "Condition", pt.size=0)
+#Donor
+Donor <- gsub("(FPD[0-9]+)_.*", "\\1", SampleNames)
+Donor <- gsub("(HD[0-9]+)_.*", "\\1", Donor)
+Donor <- gsub("Healthy_", "", Donor)
+Donor <- gsub("HD_4_2", "HD4", Donor)
+names(Donor) <- SampleNames
+BM_combined$Donor <- plyr::revalue(BM_combined$orig.ident, Donor)
+
+# Origin
+Origin <- c(rep("CEDAR", 31))
+names(Origin) <- SampleNames
+BM_combined$Origin <- plyr::revalue(BM_combined$orig.ident, Origin)
+
+## Celltype Condition
+BM_combined$celltype.Condition <- paste(BM_combined$Celltype, BM_combined$Condition, sep = "_")
+
+## Condition Origin
+BM_combined$DataSource <- paste(BM_combined$Condition, BM_combined$Origin, sep="_")
+
+## Enrichment
+Enrichment <- rep("Unenriched", length(SampleNames))
+Enrichment[grep("Enriched", SampleNames)] <- "Enriched CD34+"
+Enrichment[grep("CD11BCD14_1", SampleNames)] <- "Enriched CD11B+ CD14+"
+Enrichment[grep("CD11BCD14minus", SampleNames)] <- "Enriched CD11B+"
+names(Enrichment) <- SampleNames
+BM_combined$Enrichment <- plyr::revalue(BM_combined$orig.ident, Enrichment)
+
+library(Seurat)
+# BM_combined_minDist0.3.Nneighbors40_3D <- RunUMAP(object = BM_combined, dims = 1:50, n.components = 3, n.neighbors = 40, min.dist = 0.3, verbose = T)
+
+DimPlot(Factor(BM_combined, factor = "Condition", cellsPerIdent = 40000), pt.size = 0.001, label=T, split.by = "Condition") + NoLegend()
+DimPlot(BM_combined, pt.size = 0.001, split.by = "Donor", ncol = 4) + NoLegend()
+DimPlot(BM_combined, pt.size = 0.001, label=T) + NoLegend() 
+library(rgl)
+library(tidyverse)
+# Idents(BM_combined)
+# DimPlot3D(BM_combined_minDist0.3.Nneighbors40_3D, label = T)
+# FeaturePlot(BM_combined, features = "CXCL8", pt.size = 0.001, split.by = "Condition", min.cutoff = 'q9')
+
+
+```
+
+``` {r Markers, fig.width=10, fig.height=5, eval=F}
+library(tidyverse)
+library(Seurat)
+
+# saveRDS(BM_combined, file = "BM_Combined_Relabeled.RDS")
+BM_combined <- readRDS("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/Integrated_Realign/BM_Combined_Relabeled.RDS")
+
+DefaultAssay(BM_combined) <- "RNA"
+FeaturePlot(BM_combined, features = "MME", pt.size = 0.01)
+
+# Undifferentiated - HSC/Progenitor
+p1<- FeaturePlot(BM_combined, features = c("EGR1", "MSI2", "CD38", "CD34", "PROM1", "EGFL7"), pt.size = 0.01, combine = F)
+p1 <- lapply(X=p1, FUN = function(x) AugmentPlot(x))
+CombinePlots(p1)
+
+### Myeloid - GMP/ProMono
+p1 <- FeaturePlot(BM_combined, features = c("MPO","ELANE","CTSG","AZU1","LYST","LYZ","CEBPD","MNDA"), pt.size = 0.01, min.cutoff = 'q9', combine = F)
+p1 <- lapply(X=p1, FUN = function(x) AugmentPlot(x))
+CombinePlots(p1)
+
+
+### Myeloid - Mono/cDC/pDC
+p1 <- lapply(X=FeaturePlot(BM_combined, features = c("FCER1G", "FCN", "CD14", "C5AR1", "CLEC4A", "CLEC10A"),
+            pt.size = 0.01, min.cutoff = 'q1', combine = F), FUN = function(x) AugmentPlot(x))
+print(p1)
+lapply(X=list(FeaturePlot(BM_combined, features = c("FCER1A", "CLEC4C", "PTPRS", "IRF8", "TCF4"),
+            pt.size = 0.01, min.cutoff = 'q9')), FUN = function(x) AugmentPlot(x))
+FeaturePlot(BM_combined, features = c("FCER1A"),
+            pt.size = 0.01, min.cutoff = 'q9')
+
+## Erythroid - Late/Early
+DefaultAssay(BM_combined) <- "integrated"
+p1 <- lapply(X=FeaturePlot(BM_combined, features = c("CSF1", "KIT", "HBB", "HBD", "GYPA"),
+            pt.size = 0.01, min.cutoff = 'q1', combine = F), FUN = function(x) AugmentPlot(x))
+CombinePlots(p1)
+
+## Lymphoid - ProB/B/Plasma
+lapply(X=list(FeaturePlot(BM_combined, features = c("CD24", "EBF1", "MME", "VPREB1", "PAX5", "CD19"),
+            pt.size = 0.01, min.cutoff = 'q9')), FUN = function(x) AugmentPlot(x))
+lapply(X=list(FeaturePlot(BM_combined, features = c("CD79A", "MS4A1", "BANK1", "MZB1", "IGLL5", "JCHAIN"),
+            pt.size = 0.01, min.cutoff = 'q9')), FUN = function(x) AugmentPlot(x))
+FeaturePlot(BM_combined, features = "CCL24", split.by="Condition", min.cutoff = "q9")
+  ## Lymphoid - T, CTL, K
+lapply(X=list(FeaturePlot(BM_combined, features = c("CD3D", "CD3G", "IL32", "IL7R", "TCF7", "CCL5"),
+            pt.size = 0.01, min.cutoff = 'q9')), FUN = function(x) AugmentPlot(x))
+lapply(X=list(FeaturePlot(BM_combined, features = c("GZMK", "CD8A", "KLRB1", "KLRD1",  "GZMB", "NCAM1"),
+            pt.size = 0.01, min.cutoff = 'q9')), FUN = function(x) AugmentPlot(x))
+FeaturePlot(BM_combined, features = c("CD14", "CD68", "TFRC", "GYPA"),
+            pt.size = 0.01, min.cutoff = 'q9')
+FeaturePlot(BM_combined, features = c("GP1BA", "ITGA2B", "ITGB3", "ITGAM"),
+            pt.size = 0.01, min.cutoff = 'q9')
+DimPlot(BM_combined, label=F, group.by = "orig.ident") #+ guides(color=FALSE)
+### Heatmap
+
+Genes <- c("MEIS1", "EGR1", "MSI2", "CD34", "PROM1", "EGFL7", "CD38",
+           "MPO","ELANE","CTSG","AZU1","LYST","LYZ","CEBPD","MNDA",
+           "FCER1G", "FCN1", "CD14", "C5AR1", "CLEC4A", "CLEC10A",
+           "FCER1A", "CLEC4C", "PTPRS", "IRF8", "TCF4",
+           "CSF1", "KIT", "HBB", "HBD", "GYPA",
+           "CD24", "EBF1", "MME", "VPREB1", "PAX5", "CD19",
+           "CD79A", "MS4A1", "BANK1", "MZB1", "IGLL5", "JCHAIN",
+           "CD3D", "CD3G", "IL32", "IL7R", "TCF7", "CCL5",
+           "GZMK", "CD8A", "KLRB1", "KLRD1", "GZMB", "NCAM1")
+  
+library(tidyverse)
+DefaultAssay(BM_combined) <- "integrated"
+DimPlot(BM_combined)
+p1 <- DoHeatmap(BM_combined, cells = sample(colnames(BM_combined), 10000), features = Genes, label = T, size = 6, draw.lines = F) + NoLegend()
+
+## Annotation of column
+AllGenes <- read.table("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings/Genes.txt", 
+                       sep = "\t", 
+                       stringsAsFactors = F,
+                       header = F)
+colnames(AllGenes) <- c("Genes", "CellType")
+AllGenes$Genes <- gsub("(.*)[[:space:]]\\(.*", "\\1", AllGenes$Genes)
+Groups <- unique(AllGenes$CellType)
+MegEryth1 <- AllGenes$Genes[AllGenes$CellType == Groups[1]]
+MegEryth2 <- AllGenes$Genes[AllGenes$CellType == Groups[2]]
+MEP <- AllGenes$Genes[AllGenes$CellType == Groups[3]]
+Mega <- AllGenes$Genes[AllGenes$CellType == Groups[4]]
+ImmatureMyeloid <- AllGenes$Genes[AllGenes$CellType == Groups[5]]
+PreBCell <- AllGenes$Genes[AllGenes$CellType == Groups[6]]
+ImmatureMyeloid2 <- AllGenes$Genes[AllGenes$CellType == Groups[7]]
+BM_combined <- AddModuleScore(BM_combined, features = list(MegEryth1), name = "MegEryth_1_")
+MegEryth_plot <- FeaturePlot(BM_combined, "MegEryth_1_1", min.cutoff = 'q20') + ggtitle("MegEryth1")
+BM_combined <- AddModuleScore(BM_combined, features = list(MegEryth2), name = "MegEryth_2_")
+MegEryth1_plot <- FeaturePlot(BM_combined, "MegEryth_2_1", min.cutoff = 'q20') + ggtitle("MegEryth2")
+BM_combined <- AddModuleScore(BM_combined, features = list(MEP), name = "MEP")
+MEP_plot <- FeaturePlot(BM_combined, "MEP1", min.cutoff = 'q20') + ggtitle("MEP")
+BM_combined <- AddModuleScore(BM_combined, features = list(Mega), name = "Mega")
+Mega_plot <- FeaturePlot(BM_combined, "Mega1", min.cutoff = 'q20') + ggtitle("Mega")
+Mega_plot
+BM_combined <- AddModuleScore(BM_combined, features = list(ImmatureMyeloid), name = "ImmatureMyeloid")
+ImmatureMyeloid_plot <- FeaturePlot(BM_combined, "ImmatureMyeloid1", min.cutoff = 'q20') + ggtitle("ImmatureMyeloid")
+BM_combined <- AddModuleScore(BM_combined, features = list(ImmatureMyeloid2), name = "ImmatureMyeloid_2")
+ImmatureMyeloid2_plot <- FeaturePlot(BM_combined, "ImmatureMyeloid_21", min.cutoff = 'q20') + ggtitle("ImmatureMyeloid1")
+BM_combined <- AddModuleScore(BM_combined, features = list(PreBCell), name = "PreBCell")
+PreBCell_plot <- FeaturePlot(BM_combined, "PreBCell1", min.cutoff = 'q20') + ggtitle("PreBCell")
+
+equalSampleSizeDownsample <- function(Object, downsampleFactor, downsampleCellsNumber, seed = 8) {
+  set.seed(seed)
+  
+  ## Cells To Subset0
+  cellBarcodes <- c()
+
+    ## DE cells 
+  downsampleFactors <- Object[[downsampleFactor, drop=TRUE]]
+  downsampleFactorsUniq <- unique(downsampleFactors)
+  
+  for (i in 1:length(downsampleFactorsUniq)) {
+    downsampleCellsByFactor <- names(grep(paste0("^", downsampleFactorsUniq[i], "$"), downsampleFactors, value = T))
+    
+    ## Intersect the barcodes to actually sample
+    barcodesToDownsample <- downsampleCellsByFactor
+    
+    ## Skip samples that have no cells of that type 
+    if (length(barcodesToDownsample) > 0) {
+      if(length(barcodesToDownsample) > downsampleCellsNumber) {
+        sampledBarcodes<- sample(barcodesToDownsample, size = downsampleCellsNumber)
+        cellBarcodes <- c(cellBarcodes, sampledBarcodes)
+      } else {
+        cellBarcodes <- c(cellBarcodes, barcodesToDownsample)
+      }
+    }
+  }
+  Object <- Seurat::SubsetData(Object, cells = cellBarcodes)
+  return(Object)
+}
+BM_combined_Unenriched <- equalSampleSizeDownsample(BM_combined_Unenriched, downsampleFactor = "Condition", downsampleCellsNumber = 31450)
+
+
+
+library(SeuratData)
+library(tidyverse)
+table(BM_combined_Unenriched$Condition)
+equalSampleSizeDownsample <- function(Object, downsampleFactor, DEFoctorsOfInterest, DEGroupBy, downsampleCellsNumber, seed = 8) {
+  set.seed(seed)
+  
+  ## Cells To Subset
+  cellBarcodes <- c()
+  
+  ## DE cells of interest
+  DEFactors  <- Object[[DEGroupBy, drop=TRUE]]
+  DECellsOfInterest <- names(grep(paste(paste0("^", DEFoctorsOfInterest, "$"), collapse = "|"), DEFactors, value = T))
+  #print(DECellsOfInterest)
+  ## DE cells 
+  downsampleFactors <- Object[[downsampleFactor, drop=TRUE]]
+  downsampleFactorsUniq <- unique(downsampleFactors)
+  
+  for (i in 1:length(downsampleFactorsUniq)) {
+    downsampleCellsByFactor <- names(grep(paste0("^", downsampleFactorsUniq[i], "$"), downsampleFactors, value = T))
+    
+    ## Intersect the barcodes to actually sample
+    barcodesToDownsample <- intersect(downsampleCellsByFactor, DECellsOfInterest)
+    
+    ## Skip samples that have no cells of that type 
+    if (length(barcodesToDownsample) > 0) {
+      if(length(barcodesToDownsample) > downsampleCellsNumber) {
+        sampledBarcodes<- sample(barcodesToDownsample, size = downsampleCellsNumber)
+        cellBarcodes <- c(cellBarcodes, sampledBarcodes)
+      } else {
+        cellBarcodes <- c(cellBarcodes, barcodesToDownsample)
+      }
+    }
+  }
+  Object <- Seurat::SubsetData(Object, cells = cellBarcodes)
+  return(Object)
+}
+
+
+# head(BM_combined@meta.data)
+DifferentialExpression <- function(Object, ident.1, ident.2, DE.group.by, outFolder = "DE", maxCellsIdent = Inf, plotCellProportions = FALSE) {
+  if (!dir.exists(outFolder)) {
+    system(sprintf("mkdir %s", outFolder))
+  }
+  if (maxCellsIdent != Inf) {
+    message(paste("Subsetting Idents to Equal Sizes By",  DE.group.by))
+    Object <- downsampleIdentByFactor(BM_combined, factor = DE.group.by, cellsPerIdent = maxCellsIdent)
+  }
+  
+  
+  ## DE by group
+  message(sprintf("Calculating DE of %s vs %s", ident.1, ident.2))
+  Idents(Object) <- DE.group.by
+  tmpDETable <- FindMarkers(Object, 
+                            ident.1 = ident.1, 
+                            ident.2 = ident.2)#,
+                            # logfc.threshold = -Inf,
+                            # min.pct = -Inf,
+                            # min.diff.pct = -Inf )
+  # tmpDETable <- tmpDETable[(tmpDETable[,5] < 0.01),]
+  outFile <- paste("DE", ident.1, ident.2, "Markers.txt", sep=".")
+  assign(outFile, tmpDETable, envir = .GlobalEnv)
+  write.table(x = tmpDETable, 
+              file = sprintf("%s/%s", outFolder, outFile), 
+              quote = F,
+              col.names = NA, 
+              sep = "\t")
+  
+  ## Get avg exp for scatterPlot ident.1
+  cellsOfInterest <- subset(Object, idents = c(ident.1,ident.2))
+  avgExp.Cells <- log1p(AverageExpression(cellsOfInterest, verbose = FALSE)$RNA)
+  avgExp.Cells$Gene <- rownames(avgExp.Cells)
+  colnames(avgExp.Cells)[1:2] <- levels(cellsOfInterest)
+  avgExp.Cells <- avgExp.Cells[,c(ident.1, ident.2, "Gene")]
+  
+  ## Plot Avg Expression
+  xaxis <- sym(ident.1)
+  yaxis <- sym(ident.2)
+  p1 <- ggplot(avgExp.Cells, aes(!!xaxis, !!yaxis)) +
+    geom_point() +
+    ggtitle(sprintf("DE of %s vs %s", ident.1, ident.2)) +
+    xlab(ident.1) +
+    ylab(ident.2) +
+    theme_classic()
+  if (nrow(tmpDETable) > 0) {
+    genes.to.label = rownames(tmpDETable)[1:30]
+    p1 <- LabelPoints(plot = p1, points = genes.to.label, repel = TRUE)
+  }
+
+  ## Save PDF and PNG
+  pdf(file = sprintf("%s/%s.pdf", outFolder, outFile),
+      width = 5,
+      height = 5)
+  plot(p1)
+  dev.off()
+  png(file = sprintf("%s/%s.png", outFolder, outFile),
+      width = 5,
+      height = 5,
+      units = "in",
+      res =100)
+  plot(p1)
+  dev.off()
+  if (plotCellProportions != FALSE) {
+    barGraphCellType(SeuratObject = Object,
+                     Group.By = DE.group.by, 
+                     PlotIdents = c(ident.1, ident.2), 
+                     file = sprintf("%s/%s_cellProportions.pdf", outFolder, outFile))
+  }
+  return(p1)
+}
+
+barGraphCellType <- function(SeuratObject, Group.By, PlotIdents = NULL, file = NULL, Title = "Percent Celltype by Sample") {
+  CellTypeDF <- as.data.frame(SeuratObject@meta.data %>% 
+    group_by_(Group.By, "Celltype") %>% 
+    tally())
+  if (!is.null(PlotIdents)) {
+    keep <-  CellTypeDF[,Group.By] %in% PlotIdents 
+    CellTypeDF <- CellTypeDF[keep,]
+  }
+  library(RColorBrewer)
+  set.seed(2019)
+  n <- 15
+  qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+  col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+  p1 <- ggplot(as.data.frame(CellTypeDF), aes_string(x=Group.By, y="n", fill="Celltype")) + 
+    geom_bar(position = "fill",stat = "identity") + 
+    scale_fill_manual(values=colorRampPalette(brewer.pal(8, name = "Set1"))(18)) +
+    scale_y_continuous(labels = scales::percent_format(), expand = c(0,0)) +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1), 
+          axis.ticks.x = element_blank(),
+          axis.line.x=element_blank()) +
+    xlab("Sample") +
+    ylab("Percentage") +
+    ggtitle(Title)
+  if (!is.null(file)) {
+    pdf(file, width = 11, height = 8.5)
+    print(p1)
+    dev.off()
+  } else {
+   print(p1) 
+  }
+}
+DefaultAssay(BM_combined) <- "RNA"
+setwd("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/SeptemberNewData/")
+DifferentialExpression(Object = BM_combined, ident.1 = "Stroma", ident.2 = "MKP", DE.group.by = "CellType", outFolder = "DETest", plotCellProportions = T)
+
+## Differential Expression Across Condition
+DifferentialExpression(Object = BM_combined, ident.1 = "Healthy", ident.2 = "FPD", DE.group.by = "Condition", outFolder = "DECondition", plotCellProportions = T)
+
+# ## Differential Expression Across Condition and Source
+# DifferentialExpression(Object = BM_combined, ident.1 = "FPD_CEDAR", ident.2 = "Healthy_CEDAR", DE.group.by = "DataSource", outFolder = "DEConditionSource", plotCellProportions = T)
+# DifferentialExpression(Object = BM_combined, ident.1 = "FPD_CEDAR", ident.2 = "Healthy_HCA", DE.group.by = "DataSource", outFolder = "DEConditionSource", plotCellProportions = T)
+# DifferentialExpression(Object = BM_combined, ident.1 = "Healthy_CEDAR", ident.2 = "Healthy_HCA", DE.group.by = "DataSource", outFolder = "DEConditionSource", plotCellProportions = T)
+
+
+# ## Differential Expression Across Condition and Source WITH MaxCellsPerIdent
+# DifferentialExpression(Object = BM_combined, ident.1 = "FPD_CEDAR", ident.2 = "Healthy_CEDAR", DE.group.by = "DataSource", outFolder = "DEConditionSourceMaxIdent", maxCellsIdent = 400, plotCellProportions = T)
+# DifferentialExpression(Object = BM_combined, ident.1 = "FPD_CEDAR", ident.2 = "Healthy_HCA", DE.group.by = "DataSource", outFolder = "DEConditionSourceMaxIdent", maxCellsIdent = 400, plotCellProportions = T)
+# DifferentialExpression(Object = BM_combined, ident.1 = "Healthy_CEDAR", ident.2 = "Healthy_HCA", DE.group.by = "DataSource", outFolder = "DEConditionSourceMaxIdent", maxCellsIdent = 400, plotCellProportions = T)
+
+## CelltypeCOndiit
+possibleIdents <- unique(BM_combined$CellType)
+
+for (i in 1:length(possibleIdents)) {
+  ident1 <- paste(possibleIdents[i], "FPD", sep="_")
+  ident2 <- paste(possibleIdents[i], "Healthy", sep = "_")
+  message(sprintf("Calculating DE of %s vs %s", ident1, ident2))
+  DifferentialExpression(Object = BM_combined,
+                         ident.1 = ident1,
+                         ident.2 = ident2,
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterCondition")
+}
+setwd("~/Box Sync/Alex_Data/Anupriya_cellR3/Analysis/NewData2020_TransferRankings")
+for (i in 1:length(possibleIdents)) {
+  ident1 <- paste(possibleIdents[i], "FPD", sep="_")
+  ident2 <- paste(possibleIdents[i], "Healthy", sep = "_")
+  message(sprintf("Calculating DE of %s vs %s", ident1, ident2))
+  DifferentialExpression(Object = BM_combined,
+                         ident.1 = ident1,
+                         ident.2 = ident2,
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterCondition_NewProgenitors")
+}
+
+
+
+
+
+
+equalSampleSizeDownsample <- function(Object, downsampleFactor, DEFoctorsOfInterest, DEGroupBy, downsampleCellsNumber, seed = 8) {
+  set.seed(seed)
+  
+  ## Cells To Subset
+  cellBarcodes <- c()
+  
+  ## DE cells of interest
+  DEFactors  <- Object[[DEGroupBy, drop=TRUE]]
+  DECellsOfInterest <- names(grep(paste(paste0("^", DEFoctorsOfInterest, "$"), collapse = "|"), DEFactors, value = T))
+  #print(DECellsOfInterest)
+  ## DE cells 
+  downsampleFactors <- Object[[downsampleFactor, drop=TRUE]]
+  downsampleFactorsUniq <- unique(downsampleFactors)
+  
+  for (i in 1:length(downsampleFactorsUniq)) {
+    downsampleCellsByFactor <- names(grep(paste0("^", downsampleFactorsUniq[i], "$"), downsampleFactors, value = T))
+    
+    ## Intersect the barcodes to actually sample
+    barcodesToDownsample <- intersect(downsampleCellsByFactor, DECellsOfInterest)
+    
+    ## Skip samples that have no cells of that type 
+    if (length(barcodesToDownsample) > 0) {
+      if(length(barcodesToDownsample) > downsampleCellsNumber) {
+        sampledBarcodes<- sample(barcodesToDownsample, size = downsampleCellsNumber)
+        cellBarcodes <- c(cellBarcodes, sampledBarcodes)
+      } else {
+        cellBarcodes <- c(cellBarcodes, barcodesToDownsample)
+      }
+    }
+  }
+  Object <- Seurat::SubsetData(Object, cells = cellBarcodes)
+  return(Object)
+}
+
+plotByFactor <- function(Object, downsampleFactor, DEGroupBy, outFile = NULL ) {
+ plot.df <- Object@meta.data %>% group_by_(downsampleFactor, DEGroupBy) %>% tally()
+ downsampleFactor<- sym(downsampleFactor)
+ DEGroupBy<- sym(DEGroupBy)
+ if (length(outFile) > 0) {
+   pdf(outFile, width = 6, height = 6)
+   p1 <- ggplot(data.frame(plot.df), aes(x = fct_reorder(!!downsampleFactor, !!DEGroupBy), y=n,  fill = !!DEGroupBy)) + 
+     geom_bar(stat = "identity", position = "dodge") +
+     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+     xlab(downsampleFactor) + 
+     ggtitle(paste("Number of", downsampleFactor, "Per Comparison"))
+   print(p1)
+   dev.off()
+   print("Worked!")
+ }
+   ggplot(data.frame(plot.df), aes(x = fct_reorder(!!downsampleFactor, !!DEGroupBy), y=n,  fill = !!DEGroupBy)) + 
+     geom_bar(stat = "identity", position = "dodge") +
+     theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+     xlab(downsampleFactor) + 
+     ggtitle(paste("Number of", downsampleFactor, "Per Comparison"))
+}
+
+DifferentialExpression <- function(Object, 
+                                   ident.1, 
+                                   ident.2, 
+                                   DE.group.by, 
+                                   outFolder = "DE", 
+                                   maxCellsIdent = Inf, 
+                                   plotCellProportions = FALSE,
+                                   downsampleCellsNumber = NULL,
+                                   plotCellDonorDistrubition = FALSE) {
+  if (!dir.exists(outFolder)) {
+    system(sprintf("mkdir %s", outFolder))
+  }
+  if (maxCellsIdent != Inf) {
+    message(paste("Subsetting Idents to Equal Sizes By",  DE.group.by))
+    Object <- downsampleIdentByFactor(BM_combined, factor = DE.group.by, cellsPerIdent = maxCellsIdent)
+  }
+  if (length(downsampleCellsNumber) > 0) {
+    cat("subsetting Data...")
+    Object <- equalSampleSizeDownsample(Object = Object, 
+                                        downsampleFactor = "Donor", 
+                                        DEGroupBy = DE.group.by, 
+                                        DEFoctorsOfInterest = c(ident.1, ident.2),
+                                        downsampleCellsNumber = downsampleCellsNumber)
+  }
+  
+  ## DE by group
+  message(sprintf("Calculating DE of %s vs %s", ident.1, ident.2))
+  Idents(Object) <- DE.group.by
+  tmpDETable <- FindMarkers(Object, 
+                            ident.1 = ident.1, 
+                            ident.2 = ident.2,
+                            logfc.threshold = -Inf,
+                            min.pct = -Inf,
+                            min.diff.pct = -Inf)
+  # tmpDETable <- tmpDETable[(tmpDETable[,5] < 0.01),]
+  outFile <- paste("DE", ident.1, ident.2, "Markers.txt", sep=".")
+  assign(outFile, tmpDETable, envir = .GlobalEnv)
+  write.table(x = tmpDETable, 
+              file = sprintf("%s/%s", outFolder, outFile), 
+              quote = F,
+              col.names = NA, 
+              sep = "\t")
+  
+  ## Get avg exp for scatterPlot ident.1
+  cellsOfInterest <- subset(Object, idents = c(ident.1,ident.2))
+  avgExp.Cells <- log1p(AverageExpression(cellsOfInterest, verbose = FALSE)$RNA)
+  avgExp.Cells$Gene <- rownames(avgExp.Cells)
+  colnames(avgExp.Cells)[1:2] <- levels(cellsOfInterest)
+  avgExp.Cells <- avgExp.Cells[,c(ident.1, ident.2, "Gene")]
+  
+  ## Plot Avg Expression
+  xaxis <- sym(ident.1)
+  yaxis <- sym(ident.2)
+  p1 <- ggplot(avgExp.Cells, aes(!!xaxis, !!yaxis)) +
+    geom_point() +
+    ggtitle(sprintf("DE of %s vs %s", ident.1, ident.2)) +
+    xlab(ident.1) +
+    ylab(ident.2) +
+    theme_classic()
+  if (nrow(tmpDETable) > 0) {
+    genes.to.label = rownames(tmpDETable)[1:30]
+    p1 <- LabelPoints(plot = p1, points = genes.to.label, repel = TRUE)
+  }
+
+  ## Save PDF and PNG
+  pdf(file = sprintf("%s/%s.pdf", outFolder, outFile),
+      width = 5,
+      height = 5)
+  plot(p1)
+  dev.off()
+  png(file = sprintf("%s/%s.png", outFolder, outFile),
+      width = 5,
+      height = 5,
+      units = "in",
+      res =100)
+  plot(p1)
+  dev.off()
+  if (plotCellProportions != FALSE) {
+    barGraphCellType(SeuratObject = Object,
+                     Group.By = DE.group.by, 
+                     PlotIdents = c(ident.1, ident.2), 
+                     file = sprintf("%s/%s_cellProportions.pdf", outFolder, outFile))
+  }
+  if (plotCellDonorDistrubition == TRUE) {
+    plotByFactor(Object, 
+                 downsampleFactor = "Donor", 
+                 DEGroupBy = DE.group.by,
+                 outFile = sprintf("%s/%s_DonorProportions.pdf", outFolder, outFile))
+  }
+  return(p1)
+}
+possibleIdents <- unique(BM_combined$Celltype)
+possibleIdents <- unique(BM_combined$CelltypeProgenitor_2)
+BM_combined$celltype.Condition <- paste(BM_combined$CelltypeProgenitor_2, BM_combined$Condition, sep = "_")
+BM_combined$celltype.Condition
+
+for (i in 1:length(possibleIdents)) {
+  ident1 <- paste(possibleIdents[i], "FPD", sep="_")
+  ident2 <- paste(possibleIdents[i], "Healthy", sep = "_")
+  message(sprintf("Calculating DE of %s vs %s", ident1, ident2))
+  DifferentialExpression(Object = BM_combined,
+                         ident.1 = ident1,
+                         ident.2 = ident2,
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150_CellType_Progenitors_AllGenes/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+}
+VlnPlot(equalSampleSizeDownsample(Object = BM_combined, 
+                                        downsampleFactor = "Donor", 
+                                        DEGroupBy = "celltype.Condition", 
+                                        DEFoctorsOfInterest = c("Mono_Healthy", "Mono_FPD"),
+                                        downsampleCellsNumber = 150), "DEFA3", group.by = "Donor", ncol = 4) + geom_violin(scale = "count")
+for (i in 1:length(possibleIdents)) {
+  ident1 <- paste(possibleIdents[i], "FPD", sep="_")
+  ident2 <- paste(possibleIdents[i], "Healthy", sep = "_")
+  message(sprintf("Calculating DE of %s vs %s", ident1, ident2))
+  DifferentialExpression(Object = BM_combined,
+                         ident.1 = ident1,
+                         ident.2 = ident2,
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+}
+DifferentialExpression(Object = BM_combined, ident.1 = "HSC_FPD", ident.2 = "HSC_Healthy", DE.group.by = "celltype.Condition", outFolder = "DE_ClusterConditionEqualDonor/",  plotCellDonorDistrubition = TRUE)
+
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "MKP_FPD",
+                         ident.2 = "MKP_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150/",
+                         downsampleCellsNumber = 30,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "CLP_FPD",
+                         ident.2 = "CLP_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150/",
+                         downsampleCellsNumber = 50,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "Progenitor_FPD",
+                         ident.2 = "Progenitor_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "Early Eryth_FPD",
+                         ident.2 = "Early Eryth_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "HSC_FPD",
+                         ident.2 = "HSC_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150_ALL/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "Progenitor_FPD",
+                         ident.2 = "Progenitor_Healthy",
+                         DE.group.by = "celltype.Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150_ALL/",
+                         downsampleCellsNumber = 150,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "FPD",
+                         ident.2 = "Healthy",
+                         DE.group.by = "Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150_ALL/",
+                         downsampleCellsNumber = 3000,
+                         plotCellDonorDistrubition = TRUE)
+DifferentialExpression(Object = BM_combined,
+                         ident.1 = "FPD",
+                         ident.2 = "Healthy",
+                         DE.group.by = "Condition",
+                         outFolder = "DE_ClusterConditionEqualDonor150_ALL_Max_Cells/",
+                         maxCellsIdent = 150
+                         downsampleCellsNumber = 3000,
+                         plotCellDonorDistrubition = TRUE)
+
+```
